@@ -1,0 +1,18 @@
+fee_schedules:
+  OKX:
+    - tier: 1
+      maker: -0.0002
+      taker: 0.0005
+    - tier: 2
+      maker: 0.0000
+      taker: 0.0008
+  Binance:
+    - tier: 1
+      maker: 0.0001
+      taker: 0.0009
+
+default_parameters:
+  volatility: 0.03
+  liquidity: 1000000
+  permanent_impact: 0.1
+  temp_impact: 0.1
