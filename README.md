@@ -22,7 +22,7 @@ project-root/
 │   ├── app.py                   # Main application
 │   └── components/
 │       ├── order_book.py        # Order book visualization
-│       └── metrics_dashboard.py # Performance metrics
+│      
 ├── config/
 │   ├── settings.yaml            # Configuration
 │   └── okx_config.py            # OKX-specific settings
