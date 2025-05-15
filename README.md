@@ -11,7 +11,7 @@ project-root/
 ├── cryptofeed/                  # Modified cryptofeed components
 │   ├── exchanges/
 │   │   ├── okx.py               # Core OKX implementation
-│   │   └── mixins/okx.py        # Shared OKX functionality
+│   │   └── mixins/okx_rest.py        # Shared OKX functionality
 │   └── connection.py            # WebSocket management
 ├── models/
 │   ├── algren_chriss.py         # Market impact model
