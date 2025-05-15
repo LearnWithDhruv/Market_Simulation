@@ -39,7 +39,7 @@ project-root/
 
 ### 1. **Exchange Connection** (`cryptofeed/`)
 - `okx.py`: Implements OKX WebSocket feeds, subscribing to trades, order books, and funding rates.
-- `mixins/okx.py`: Provides reusable methods for authentication and message parsing.
+- `mixins/okx_rest.py`: Provides reusable methods for authentication and message parsing.
 - `connection.py`: Manages asynchronous WebSocket connections.
 
 ### 2. **Market Microstructure Models** (`models/`)
