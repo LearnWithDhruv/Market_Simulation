@@ -1,28 +1,52 @@
-from sklearn.linear_model import LinearRegression
-from cryptofeed.exchanges.okx import OKX
+import numpy as np
+from sklearn.linear_model import QuantileRegressor
+from cryptofeed.types import OrderBook
+from cryptofeed.util.book import cumulative_depth, weighted_midpoint
 
-class SlippageModel:
-    def __init__(self):
-        self.model = LinearRegression()
-        self.okx = OKX()
+class SlippageCalculator:
+    def __init__(self, window_size=1000):
+        self.window_size = window_size
+        self.history = []
+        self.linear_model = self._init_linear_model()
+        self.quantile_model = QuantileRegressor(quantile=0.95)
         
-    def train(self, historical_data):
-        """Train model with historical data"""
-        X = [[d['quantity'], d['spread'], d['imbalance']] for d in historical_data]
-        y = [d['slippage'] for d in historical_data]
-        self.model.fit(X, y)
-    
-    def predict(self, current_book, quantity):
-        """Predict slippage for given quantity"""
-        features = [
+    def update_model(self, book: OrderBook, executed_price: float, quantity: float):
+        """Update models with new trade execution data"""
+        features = self._extract_features(book, quantity)
+        actual_slippage = (executed_price - weighted_midpoint(book)) / weighted_midpoint(book)
+        
+        # Maintain rolling window of samples
+        self.history.append((features, actual_slippage))
+        if len(self.history) > self.window_size:
+            self.history.pop(0)
+            
+        # Retrain models periodically
+        if len(self.history) % 100 == 0:
+            self._retrain_models()
+
+    def estimate(self, book: OrderBook, quantity: float) -> dict:
+        """Estimate slippage for given quantity"""
+        features = self._extract_features(book, quantity)
+        
+        return {
+            'expected': float(self.linear_model.predict([features])[0]),
+            'worst_case': float(self.quantile_model.predict([features])[0]),
+            'liquidity_shortfall': self._calculate_shortfall(book, quantity),
+            'features': features
+        }
+
+    def _extract_features(self, book: OrderBook, quantity: float) -> list:
+        """Create feature vector for prediction"""
+        return [
             quantity,
-            current_book['spread'],
-            self._calculate_imbalance(current_book)
+            book.spread(),
+            book.imbalance(),
+            cumulative_depth(book.bids, 0.05),  # Depth at 5% from mid
+            cumulative_depth(book.asks, 0.05),
+            np.log(quantity / book.total_volume())
         ]
-        return self.model.predict([features])[0]
-    
-    def _calculate_imbalance(self, book):
-        """Calculate order book imbalance"""
-        total_bid = sum(amount for price, amount in book['bids'])
-        total_ask = sum(amount for price, amount in book['asks'])
-        return (total_bid - total_ask) / (total_bid + total_ask)
+
+    def _calculate_shortfall(self, book: OrderBook, quantity: float) -> float:
+        """Calculate liquidity shortfall probability"""
+        available = cumulative_depth(book.bids, 0.1) + cumulative_depth(book.asks, 0.1)
+        return max(0, quantity - available) / quantity
