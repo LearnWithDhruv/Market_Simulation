@@ -16,7 +16,9 @@ from cryptofeed.feed import Feed
 from cryptofeed.exceptions import BadChecksum
 from cryptofeed.symbols import Symbol
 from cryptofeed.types import OrderBook, Trade, Ticker, Funding, OpenInterest, Liquidation, OrderInfo, Candle
-
+from cryptofeed.exchanges.mixins.okx import OKXMixin
+from cryptofeed.connection import WebsocketConnection
+import time
 
 LOG = logging.getLogger("feedhandler")
 
@@ -569,3 +571,28 @@ class OKX(Feed, OKXRestMixin):
             raw=msg
         )
         await self.callback(ORDER_INFO, oi, timestamp)
+        
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.last_update = time.time()
+        self.latency_stats = {'count': 0, 'total': 0}
+    
+    async def _book(self, msg: dict, timestamp: float):
+        """Override book handler to add latency tracking"""
+        receipt = time.time()
+        processing_start = time.time()
+        
+        # Original processing
+        await super()._book(msg, timestamp)
+        
+        # Latency measurement
+        processing_time = (time.time() - processing_start) * 1000
+        total_latency = (receipt - timestamp) * 1000
+        self.latency_stats['count'] += 1
+        self.latency_stats['total'] += total_latency
+        
+        return {
+            'processing_ms': processing_time,
+            'total_latency_ms': total_latency,
+            'avg_latency_ms': self.latency_stats['total'] / self.latency_stats['count']
+        }
